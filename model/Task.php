@@ -80,7 +80,7 @@ class Task
         if (($deadline !== null) &&
             date_format(date_create_from_format('d/m/Y H:i', $deadline), 'd/m/Y H:i') != $deadline
         ) {
-            throw new TaskException('Task deadlone date time error.');
+            throw new TaskException('Task deadline date time error.');
         }
 
         $this->_deadline = $deadline;
