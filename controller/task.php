@@ -152,7 +152,7 @@ if (array_key_exists('taskid', $_GET)) {
 
                 $task = new Task($row['id'], $row['title'], $row['description'], $row['deadline'], $row['completed'],);
 
-                $taskArray[] = task->returnTaskAsArray();
+                $taskArray[] = $task->returnTaskAsArray();
             }
 
             $returnData = array();
