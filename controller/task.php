@@ -33,7 +33,7 @@ if (array_key_exists('taskid', $_GET)) {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         try {
-            $query = $readDB->prepare('select id, title, description, DATE_FORMAT(deadline, "%d/%m/%Y %H:%i"), completed from tbltasks where id = :taskid');
+            $query = $readDB->prepare('SELECT id, title, description, DATE_FORMAT(deadline, "%d/%m/%Y %H:%i") as deadline, completed FROM tbltasks where id = :taskid');
             $query->bindParam(':taskid', $taskid, PDO::PARAM_INT);
             $query->execute();
 
