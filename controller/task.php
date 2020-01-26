@@ -62,6 +62,7 @@ if (array_key_exists('taskid', $_GET)) {
             $response->setHttpStatusCode(200);
             $response->setSuccess(true);
             $response->toCache(true);
+            $response->addMessage('Ok.');
             $response->setData($returnData);
             $response->send();
             exit();
@@ -219,6 +220,7 @@ if (array_key_exists('taskid', $_GET)) {
             $response->setHttpStatusCode(200);
             $response->setSuccess(true);
             $response->toCache(true);
+            $response->addMessage('Ok.');
             $response->setData($returnData);
             $response->send();
             exit();
