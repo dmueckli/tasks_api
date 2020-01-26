@@ -82,7 +82,38 @@ if (array_key_exists('taskid', $_GET)) {
             exit();
         }
     } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
-        //TODO: Insert Delete Method.
+        try {
+
+
+            $query = $writeDB->prepare('DELETE FROM tbltasks WHERE id = :taskid');
+            $query->bindParam(':taskid', $taskid, PDO::PARAM_INT);
+            $query->execute();
+
+            $rowCount = $query->rowCount();
+
+            if ($rowCount === 0) {
+                $response = new Response();
+                $response->setHttpStatusCode(404);
+                $response->setSuccess(false);
+                $response->addMessage('Task not found.');
+                $response->send();
+                exit();
+            }
+
+            $response = new Response();
+            $response->setHttpStatusCode(200);
+            $response->setSuccess(true);
+            $response->addMessage('Task deleted successfully.');
+            $response->send();
+            exit();
+        } catch (PDOException $ex) {
+            $response = new Response();
+            $response->setHttpStatusCode(500);
+            $response->setSuccess(false);
+            $response->addMessage('Failed to delete task.');
+            $response->send();
+            exit();
+        }
     } elseif ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
         //TODO: Insert Patch Method.
     } else {
