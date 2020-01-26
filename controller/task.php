@@ -124,4 +124,15 @@ if (array_key_exists('taskid', $_GET)) {
         $response->send();
         exit();
     }
+} elseif (array_key_exists('completed', $_GET)) {
+
+    $completed = $_GET['completed'];
+    if ($completed !== 'Y' && $completed !== 'N') {
+        $response = new Response();
+        $response->setHttpStatusCode(400);
+        $response->setSuccess(false);
+        $response->addMessage('Completed filter must be either Y or N.');
+        $response->send();
+        exit();
+    }
 }
