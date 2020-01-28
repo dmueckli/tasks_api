@@ -121,7 +121,7 @@ if (array_key_exists('sessionid', $_GET)) {
 
         if (!password_verify($password, $returned_password)) {
 
-            $query = $writeDB->prepare('UPDATE tblusers SET loginattempts = loginattempts+1 where id = :id');
+            $query = $writeDB->prepare('UPDATE tblusers SET loginattempts = loginattempts+1 WHERE id = :id');
             $query->bindParam(':id', $returned_id, PDO::PARAM_INT);
             $query->execute();
 
