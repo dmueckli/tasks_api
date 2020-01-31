@@ -54,10 +54,10 @@ if (array_key_exists('sessionid', $_GET)) {
         $response = new Response();
         $response->setHttpStatusCode(400);
         $response->setSuccess(false);
-        (isset($jsonData->username) ? $response->addMessage('Username not supplied.') : false);
-        (isset($jsonData->password) ? $response->addMessage('Password not supplied.') : false);
+        (!isset($jsonData->username) ? $response->addMessage('Username not supplied.') : false);
+        (!isset($jsonData->password) ? $response->addMessage('Password not supplied.') : false);
         $response->send();
-        exit();
+        exit;
     }
 
     if (strlen($jsonData->username) < 1 || strlen($jsonData->username) > 255 || strlen($jsonData->password) < 1 || strlen($jsonData->password) > 255) {
@@ -66,8 +66,8 @@ if (array_key_exists('sessionid', $_GET)) {
         $response->setSuccess(false);
         (strlen($jsonData->username) < 1 ? $response->addMessage('Username cannot be blank.') : false);
         (strlen($jsonData->username) > 255 ? $response->addMessage('Username must be less than 255.') : false);
-        (strlen($jsonData->password) < 1 ? $response->addMessage('Username cannot be blank.') : false);
-        (strlen($jsonData->password) > 255 ? $response->addMessage('Username must be less than 255.') : false);
+        (strlen($jsonData->password) < 1 ? $response->addMessage('Password cannot be blank.') : false);
+        (strlen($jsonData->password) > 255 ? $response->addMessage('Password must be less than 255.') : false);
         $response->send();
         exit();
     }
@@ -180,9 +180,6 @@ if (array_key_exists('sessionid', $_GET)) {
         $response->setData($returnData);
         $response->send();
         exit();
-
-
-
     } catch (PDOException $ex) {
         $writeDB->rollBack();
         $response = new Response();
