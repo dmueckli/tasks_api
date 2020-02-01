@@ -100,12 +100,122 @@ if (array_key_exists('sessionid', $_GET)) {
             exit();
         }
 
-        if (!isset($jsonData->refresh_token) || strlen($jsonData->refresh_token) < 1) {
+        // check if patch request contains access token
+    if(!isset($jsonData->refresh_token) || strlen($jsonData->refresh_token) < 1)  {
+        $response = new Response();
+        $response->setHttpStatusCode(400);
+        $response->setSuccess(false);
+        (!isset($jsonData->refresh_token) ? $response->addMessage("Refresh Token not supplied") : false);
+        (strlen($jsonData->refresh_token) < 1 ? $response->addMessage("Refresh Token cannot be blank") : false);
+        $response->send();
+        exit;
+      }
+
+        try {
+            $refreshToken = $jsonData->refresh_token;
+
+            $query = $writeDB->prepare('SELECT tblsessions.id AS sessionid, tblsessions.userid AS userid, accesstoken, refreshtoken, useractive, loginattempts, accesstokenexpiry, refreshtokenexpiry FROM tblsessions, tblusers WHERE tblusers.id = tblsessions.userid AND tblsessions.id = :sessionid AND tblsessions.accesstoken = :accesstoken AND tblsessions.refreshtoken = :refreshtoken');
+            $query->bindParam(':sessionid', $sessionid, PDO::PARAM_INT);
+            $query->bindParam(':accesstoken', $accessToken, PDO::PARAM_STR);
+            $query->bindParam(':refreshtoken', $refreshToken, PDO::PARAM_STR);
+            $query->execute();
+
+            $rowCount = $query->rowCount();
+
+            if ($rowCount === 0) {
+                $response = new Response();
+                $response->setHttpStatusCode(401);
+                $response->setSuccess(false);
+                $response->addMessage('Access token or refresh token is incorrect for session id.');
+                $response->send();
+                exit();
+            }
+
+            $row = $query->fetch(PDO::FETCH_ASSOC);
+
+            $returned_sessionid = $row['sessionid'];
+            $returned_userid = $row['userid'];
+            $returned_accesstoken = $row['accesstoken'];
+            $returned_refreshtoken = $row['refreshtoken'];
+            $returned_useractive = $row['useractive'];
+            $returned_loginattempts = $row['loginattempts'];
+            $returned_accesstokenexpiry = $row['accesstokenexpiry'];
+            $returned_refreshtokenexpiry = $row['refreshtokenexpiry'];
+
+            if ($returned_useractive !== 'Y') {
+                $response = new Response();
+                $response->setHttpStatusCode(401);
+                $response->setSuccess(false);
+                $response->addMessage('User account is not active.');
+                $response->send();
+                exit();
+            }
+
+            if ($returned_loginattempts >= 3) {
+                $response = new Response();
+                $response->setHttpStatusCode(401);
+                $response->setSuccess(false);
+                $response->addMessage('User account is currently locked out.');
+                $response->send();
+                exit();
+            }
+
+            if (strtotime($returned_refreshtokenexpiry) < time()) {
+                $response = new Response();
+                $response->setHttpStatusCode(401);
+                $response->setSuccess(false);
+                $response->addMessage('Refresh token has expired - please log in again.');
+                $response->send();
+                exit();
+            }
+
+            $accessToken = base64_encode(bin2hex(openssl_random_pseudo_bytes(24)) . time());
+            $refreshToken = base64_encode(bin2hex(openssl_random_pseudo_bytes(24)) . time());
+
+            $access_token_expiry_seconds = 1200;
+            $refresh_token_expiry_seconds = 1209600;
+
+            $query = $writeDB->prepare('UPDATE tblsessions SET accesstoken = :accesstoken, accesstokenexpiry = date_add(NOW(), INTERVAL :accesstokenexpiryseconds SECOND), refreshtoken = :refreshtoken, refreshtokenexpiry = date_add(NOW(), INTERVAL :refreshtokenexpiryseconds SECOND) WHERE id = :sessionid AND userid = :userid AND accesstoken = :returnedaccesstoken AND refreshtoken = :returnedrefreshtoken');
+            $query->bindParam(':userid', $returned_userid, PDO::PARAM_INT);
+            $query->bindParam(':sessionid', $returned_sessionid, PDO::PARAM_INT);
+            $query->bindParam(':accesstoken', $accessToken, PDO::PARAM_STR);
+            $query->bindParam(':accesstokenexpiryseconds', $access_token_expiry_seconds, PDO::PARAM_INT);
+            $query->bindParam(':refreshtoken', $refreshToken, PDO::PARAM_STR);
+            $query->bindParam(':refreshtokenexpiryseconds', $refresh_token_expiry_seconds, PDO::PARAM_INT);
+            $query->bindParam(':returnedaccesstoken', $returned_accesstoken, PDO::PARAM_STR);
+            $query->bindParam(':returnedrefreshtoken', $returned_refreshtoken, PDO::PARAM_STR);
+            $query->execute();
+
+            $rowCount = $query->rowCount();
+
+            if ($rowCount === 0) {
+                $response = new Response();
+                $response->setHttpStatusCode(401);
+                $response->setSuccess(false);
+                $response->addMessage('Access token could not be refreshed - please log in again.');
+                $response->send();
+                exit();
+            }
+
+            $returnedData = array();
+            $returnedData['session_id'] = $returned_sessionid;
+            $returnedData['access_token'] = $accessToken;
+            $returnedData['access_token_expiry'] = $access_token_expiry_seconds;
+            $returnedData['refresh_token'] = $refreshToken;
+            $returnedData['refresh_token_expiry'] = $refresh_token_expiry_seconds;
+
             $response = new Response();
-            $response->setHttpStatusCode(401);
+            $response->setHttpStatusCode(200);
+            $response->setSuccess(true);
+            $response->addMessage('Token refreshed.');
+            $response->setData($returnedData);
+            $response->send();
+            exit();
+        } catch (PDOException $ex) {
+            $response = new Response();
+            $response->setHttpStatusCode(500);
             $response->setSuccess(false);
-            (!isset($jsonData->refresh_token) ? $response->addMessage('Refresh token is missing from the header.') : false);
-            (strlen($jsonData->refresh_token) < 1 ? $response->addMessage('Refresh token cannot be blank.') : false);
+            $response->addMessage('There was an issue refreshing access token - please login again.');
             $response->send();
             exit();
         }
