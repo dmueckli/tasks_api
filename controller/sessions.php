@@ -16,7 +16,107 @@ try {
 }
 
 if (array_key_exists('sessionid', $_GET)) {
-    # code...
+
+    $sessionid = $_GET['sessionid'];
+
+    if ($sessionid === '' || !is_numeric($sessionid)) {
+        $response = new Response();
+        $response->setHttpStatusCode(400);
+        $response->setSuccess(false);
+        ($sessionid == '' ? $response->addMessage('Session ID cannot be blank.') : false);
+        (!is_numeric($sessionid) == '' ? $response->addMessage('Session ID must be numeric.') : false);
+        $response->send();
+        exit();
+    }
+
+    if (!isset($_SERVER['HTTP_AUTHORIZATION']) || strlen($_SERVER['HTTP_AUTHORIZATION']) < 1) {
+        $response = new Response();
+        $response->setHttpStatusCode(401);
+        $response->setSuccess(false);
+        (!isset($_SERVER['HTTP_AUTHORIZATION']) ? $response->addMessage('Access token is missing from the header.') : false);
+        (strlen($_SERVER['HTTP_AUTHORIZATION']) < 1 ? $response->addMessage('Access token cannot be blank.') : false);
+        $response->send();
+        exit();
+    }
+
+    $accessToken = $_SERVER['HTTP_AUTHORIZATION'];
+
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+
+        try {
+            $query = $writeDB->prepare('DELETE FROM tblsessions WHERE id = :sessionid AND accesstoken = :accesstoken');
+            $query->bindParam(':sessionid', $sessionid, PDO::PARAM_INT);
+            $query->bindParam(':accesstoken', $accessToken, PDO::PARAM_STR);
+            $query->execute();
+
+            $rowCount = $query->rowCount();
+
+            if ($rowCount === 0) {
+                $response = new Response();
+                $response->setHttpStatusCode(400);
+                $response->setSuccess(false);
+                $response->addMessage('Failed to log out of this session using access token provided.');
+                $response->send();
+                exit();
+            }
+
+            $returnData = array();
+            $returnData['session_id'] = intval($sessionid);
+
+            $response = new Response();
+            $response->setHttpStatusCode(200);
+            $response->setSuccess(true);
+            $response->addMessage('Logged out.');
+            $response->setData($returnData);
+            $response->send();
+            exit();
+        } catch (PDOException $ex) {
+            $response = new Response();
+            $response->setHttpStatusCode(500);
+            $response->setSuccess(false);
+            $response->addMessage('There was an issue logging out - please try again.');
+            $response->send();
+            exit();
+        }
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
+
+        if ($_SERVER['CONTENT_TYPE'] !== 'application/json') {
+            $response = new Response();
+            $response->setHttpStatusCode(400);
+            $response->setSuccess(false);
+            $response->addMessage('Content type header not set to JSON.');
+            $response->send();
+            exit();
+        }
+
+        $rawPATCHData = file_get_contents('php://input');
+
+        if (!$jsonData = json_decode($rawPATCHData)) {
+            $response = new Response();
+            $response->setHttpStatusCode(400);
+            $response->setSuccess(false);
+            $response->addMessage('Request body is not valid JSON.');
+            $response->send();
+            exit();
+        }
+
+        if (!isset($jsonData->refresh_token) || strlen($jsonData->refresh_token) < 1) {
+            $response = new Response();
+            $response->setHttpStatusCode(401);
+            $response->setSuccess(false);
+            (!isset($jsonData->refresh_token) ? $response->addMessage('Refresh token is missing from the header.') : false);
+            (strlen($jsonData->refresh_token) < 1 ? $response->addMessage('Refresh token cannot be blank.') : false);
+            $response->send();
+            exit();
+        }
+    } else {
+        $response = new Response();
+        $response->setHttpStatusCode(405);
+        $response->setSuccess(false);
+        $response->addMessage('Request method not allowed.');
+        $response->send();
+        exit();
+    }
 } elseif (empty($_GET)) {
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
